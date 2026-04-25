@@ -6,15 +6,13 @@ const path = require("path");
  *
  * Expects a JSON body:
  * {
- *   "resume": "resume text...",
- *   "jobs": [
- *     { "title": "Job Title", "description": "Job description..." },
- *     ...
- *   ]
+ *   "resume":   "resume text...",
+ *   "jobs":     [ { "title": "...", "description": "..." }, ... ]
  * }
  *
- * Spawns the Python matcher script, sends input via stdin,
- * reads the JSON result from stdout, and returns top 5 matches.
+ * Spawns the Python hybrid-scoring engine, sends input via stdin,
+ * reads the JSON result from stdout, and returns top 5 matches with
+ * full score_breakdown for frontend transparency.
  */
 const getMatchedJobs = (req, res) => {
     const { resume, jobs } = req.body;
@@ -34,7 +32,7 @@ const getMatchedJobs = (req, res) => {
     const python = spawn("python", [scriptPath]);
 
     let outputData = "";  // collects stdout from Python
-    let errorData = "";   // collects stderr from Python (for debugging)
+    let errorData  = "";  // collects stderr from Python (for debugging)
 
     // Send the input JSON to Python's stdin, then close the stream
     python.stdin.write(JSON.stringify({ resume, jobs }));
@@ -57,6 +55,7 @@ const getMatchedJobs = (req, res) => {
             return res.status(500).json({
                 success: false,
                 message: "AI engine failed to process the request.",
+                debug:   errorData,
             });
         }
 
@@ -70,8 +69,8 @@ const getMatchedJobs = (req, res) => {
 
             res.status(200).json({
                 success: true,
-                count: matches.length,
-                matches,
+                count:   matches.length,
+                matches,   // each item includes score + score_breakdown
             });
         } catch (parseError) {
             console.error("Failed to parse Python output:", outputData);

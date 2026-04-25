@@ -133,8 +133,8 @@ const smartMatch = async (req, res) => {
 
         python.on("close", (exitCode) => {
             if (exitCode !== 0) {
-                console.error("Python error:\n", errorData);
-                return reject(new Error("Python script exited with an error."));
+                console.error("Python error metadata:\n", errorData, "\nOutput:\n", outputData);
+                return reject(new Error("Python script exited with an error. Output: " + outputData));
             }
             try {
                 resolve(JSON.parse(outputData));  // parse the ranked results
@@ -170,6 +170,7 @@ const smartMatch = async (req, res) => {
             location: original.location || "N/A",
             applyLink: original.applyLink || "N/A",
             score: match.score,              // AI similarity score (0-1)
+            score_breakdown: match.score_breakdown, // Breakdown of the hybrid score
         };
     });
 
