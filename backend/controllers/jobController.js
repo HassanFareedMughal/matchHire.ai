@@ -1,44 +1,36 @@
-const axios = require("axios");
 const { spawn } = require("child_process");
 const path = require("path");
+const { getJobsCached } = require("../services/jobService");
 
-// GET /api/jobs?keyword=developer&location=New+York
+// ---------------------------------------------------------------------------
+// GET /api/jobs?keyword=developer&location=remote
+// Returns a flat list of jobs — checks Redis → MongoDB → JSearch API
+// ---------------------------------------------------------------------------
 const searchJobs = async (req, res) => {
     const { keyword = "developer", location = "remote" } = req.query;
 
     try {
-        const response = await axios.get(
-            "https://jsearch.p.rapidapi.com/search",
-            {
-                params: {
-                    query: `${keyword} in ${location}`,
-                    page: "1",
-                    num_pages: "1",
-                },
-                headers: {
-                    "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-                    "x-rapidapi-host": "jsearch.p.rapidapi.com",
-                },
-            }
-        );
+        const jobs = await getJobsCached(keyword, location);
 
-        // Simplify the response — return only the fields we need
-        const jobs = response.data.data.map((job) => ({
-            title: job.job_title,
-            company: job.employer_name,
-            location: job.job_city
-                ? `${job.job_city}, ${job.job_country}`
-                : job.job_country,
-            applyLink: job.job_apply_link,
-        }));
+        if (jobs.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No jobs found for the given keyword and location.",
+            });
+        }
 
         res.status(200).json({
             success: true,
             count: jobs.length,
-            jobs,
+            jobs: jobs.map((j) => ({
+                title: j.title,
+                company: j.company,
+                location: j.location_str,
+                applyLink: j.applyLink,
+            })),
         });
     } catch (error) {
-        console.error("JSearch API error:", error.message);
+        console.error("searchJobs error:", error.message);
         res.status(500).json({
             success: false,
             message: "Failed to fetch jobs. Please try again later.",
@@ -47,16 +39,17 @@ const searchJobs = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
-// POST /api/jobs/smart-match
-// 1. Fetch real jobs from JSearch API using keyword + location
-// 2. Send resume + job descriptions to Python matcher via child_process
-// 3. Merge AI similarity scores back with the original job data
+// POST /api/match  (called by the match route)
+// POST /api/jobs/smart-match  (also reachable via jobs route)
+//
+// 1. Fetch jobs via 3-tier cache (Redis → MongoDB → JSearch)
+// 2. Send resume + job descriptions to Python AI matcher
+// 3. Merge AI scores back with full job data
 // 4. Return top matches sorted by score
 // ---------------------------------------------------------------------------
 const smartMatch = async (req, res) => {
     const { resume, keyword = "developer", location = "remote" } = req.body;
 
-    // Validate that a resume was provided
     if (!resume || resume.trim() === "") {
         return res.status(400).json({
             success: false,
@@ -65,34 +58,20 @@ const smartMatch = async (req, res) => {
     }
 
     // ------------------------------------------------------------------
-    // Step 1 — Fetch jobs from JSearch API
+    // Step 1 — Get jobs from cache (Redis → MongoDB → JSearch API)
     // ------------------------------------------------------------------
-    let rawJobs;
+    let jobs;
     try {
-        const response = await axios.get(
-            "https://jsearch.p.rapidapi.com/search",
-            {
-                params: {
-                    query: `${keyword} in ${location}`,
-                    page: "1",
-                    num_pages: "1",
-                },
-                headers: {
-                    "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-                    "x-rapidapi-host": "jsearch.p.rapidapi.com",
-                },
-            }
-        );
-        rawJobs = response.data.data;
+        jobs = await getJobsCached(keyword, location);
     } catch (error) {
-        console.error("JSearch API error:", error.message);
+        console.error("Job fetch error:", error.message);
         return res.status(500).json({
             success: false,
-            message: "Failed to fetch jobs from JSearch API.",
+            message: "Failed to fetch jobs. Please try again later.",
         });
     }
 
-    if (!rawJobs || rawJobs.length === 0) {
+    if (!jobs || jobs.length === 0) {
         return res.status(404).json({
             success: false,
             message: "No jobs found for the given keyword and location.",
@@ -100,31 +79,27 @@ const smartMatch = async (req, res) => {
     }
 
     // ------------------------------------------------------------------
-    // Step 2 — Build a simplified jobs list to send to Python
-    // We include applyLink here so we can merge it back after scoring
+    // Step 2 — Build the payload for Python (needs title + description)
     // ------------------------------------------------------------------
-    const jobsForPython = rawJobs.map((job) => ({
-        title: job.job_title,
-        description: job.job_description || "",   // used for TF-IDF matching
-        applyLink: job.job_apply_link,             // preserved for the final response
-        company: job.employer_name,
-        location: job.job_city
-            ? `${job.job_city}, ${job.job_country}`
-            : job.job_country,
+    const jobsForPython = jobs.map((job) => ({
+        title: job.title,
+        description: job.description || "",
+        applyLink: job.applyLink,
+        company: job.company,
+        location: job.location_str,
     }));
 
     // ------------------------------------------------------------------
-    // Step 3 — Spawn Python matcher, send data via stdin, read from stdout
+    // Step 3 — Spawn Python matcher, send via stdin, read from stdout
     // ------------------------------------------------------------------
     const scriptPath = path.join(__dirname, "../../ai-engine/matcher.py");
 
     const pythonResult = await new Promise((resolve, reject) => {
         const python = spawn("python", [scriptPath]);
 
-        let outputData = "";  // stdout from Python
-        let errorData = "";  // stderr from Python (errors / tracebacks)
+        let outputData = "";
+        let errorData = "";
 
-        // Send resume + jobs as JSON to Python's stdin
         python.stdin.write(JSON.stringify({ resume, jobs: jobsForPython }));
         python.stdin.end();
 
@@ -133,20 +108,17 @@ const smartMatch = async (req, res) => {
 
         python.on("close", (exitCode) => {
             if (exitCode !== 0) {
-                console.error("Python error metadata:\n", errorData, "\nOutput:\n", outputData);
+                console.error("Python error:\n", errorData, "\nOutput:\n", outputData);
                 return reject(new Error("Python script exited with an error. Output: " + outputData));
             }
             try {
-                resolve(JSON.parse(outputData));  // parse the ranked results
+                resolve(JSON.parse(outputData));
             } catch (_) {
                 reject(new Error("Could not parse Python output."));
             }
         });
-    }).catch((err) => {
-        return { error: err.message };
-    });
+    }).catch((err) => ({ error: err.message }));
 
-    // Handle Python-level errors
     if (pythonResult.error) {
         return res.status(500).json({
             success: false,
@@ -155,9 +127,7 @@ const smartMatch = async (req, res) => {
     }
 
     // ------------------------------------------------------------------
-    // Step 4 — Merge AI scores back with the full job data (incl. applyLink)
-    // Python returns objects with {title, description, score}
-    // We match them back to the original jobs by title to restore all fields
+    // Step 4 — Merge AI scores back with the full job data
     // ------------------------------------------------------------------
     const jobMap = {};
     jobsForPython.forEach((job) => { jobMap[job.title] = job; });
@@ -169,12 +139,11 @@ const smartMatch = async (req, res) => {
             company: original.company || "N/A",
             location: original.location || "N/A",
             applyLink: original.applyLink || "N/A",
-            score: match.score,              // AI similarity score (0-1)
-            score_breakdown: match.score_breakdown, // Breakdown of the hybrid score
+            score: match.score,
+            score_breakdown: match.score_breakdown,
         };
     });
 
-    // Already sorted by Python, but ensure descending order
     mergedResults.sort((a, b) => b.score - a.score);
 
     res.status(200).json({
