@@ -1,3 +1,9 @@
 scikit-learn>=1.3.0
 rapidfuzz>=3.0.0
 spacy>=3.7.0
+# FYP-II Phase 1: Sentence-BERT semantic matching
+sentence-transformers>=2.7.0
+# After installing requirements, run:
+#   python -m spacy download en_core_web_sm
+# This script attempts to auto-download the model, but having it
+# preinstalled avoids first-run delays and network access.

@@ -24,28 +24,50 @@ const buildCacheKey = (keyword, location) =>
  * Returns an array of simplified job objects.
  */
 const fetchFromJSearch = async (keyword, location) => {
-    const response = await axios.get("https://jsearch.p.rapidapi.com/search", {
-        params: {
-            query: `${keyword} in ${location}`,
-            page: "1",
-            num_pages: "1",
-        },
-        headers: {
-            "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-            "x-rapidapi-host": "jsearch.p.rapidapi.com",
-        },
-    });
+    if (!process.env.RAPIDAPI_KEY) {
+        console.error('JSearch error: RAPIDAPI_KEY is not set in environment.');
+        return [];
+    }
 
-    const rawJobs = response.data.data || [];
+    let response;
+    try {
+        response = await axios.get("https://jsearch.p.rapidapi.com/search", {
+            params: {
+                query: `${keyword} in ${location}`,
+                page: "1",
+                num_pages: "1",
+            },
+            headers: {
+                "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+                "x-rapidapi-host": "jsearch.p.rapidapi.com",
+            },
+            timeout: 10000,
+        });
+    } catch (err) {
+        if (err.response) {
+            // Server responded with a non-2xx status
+            console.error(`JSearch API error: status=${err.response.status}`, err.response.data || err.message);
+        } else if (err.request) {
+            // No response received
+            console.error('JSearch API no response received:', err.message);
+        } else {
+            // Other errors
+            console.error('JSearch request setup error:', err.message);
+        }
+        return [];
+    }
+
+    const rawJobs = (response && response.data && response.data.data) ? response.data.data : [];
 
     // Normalize to our internal shape
     return rawJobs.map((job) => ({
-        title: job.job_title,
-        company: job.employer_name,
+        jobId:       job.job_id || "",          // JSearch unique identifier — used for dedup
+        title:       job.job_title,
+        company:     job.employer_name,
         location_str: job.job_city
             ? `${job.job_city}, ${job.job_country}`
             : job.job_country,
-        applyLink: job.job_apply_link || "",
+        applyLink:   job.job_apply_link || "",
         description: job.job_description || "",
     }));
 };
@@ -54,22 +76,45 @@ const fetchFromJSearch = async (keyword, location) => {
  * Save an array of normalized jobs to MongoDB under a keyword + location key.
  */
 const saveToMongo = async (jobs, keyword, location) => {
-    const kw = keyword.toLowerCase().trim();
+    const kw  = keyword.toLowerCase().trim();
     const loc = location.toLowerCase().trim();
 
-    const docs = jobs.map((job) => ({
-        keyword: kw,
-        location: loc,
-        title: job.title,
-        company: job.company,
-        location_str: job.location_str,
-        applyLink: job.applyLink,
-        description: job.description,
-        fetchedAt: new Date(),
-    }));
+    // Build upsert operations — one per job.
+    // Filter key: { jobId, keyword, location } — this is what the unique index enforces.
+    // $setOnInsert: only writes the document if it is new (insert), never on update.
+    // This means a re-run of the same search is a no-op for already-stored jobs.
+    const ops = jobs
+        .filter((job) => job.jobId) // skip any jobs with an empty jobId (can't dedup them safely)
+        .map((job) => ({
+            updateOne: {
+                filter: { jobId: job.jobId, keyword: kw, location: loc },
+                update: {
+                    $setOnInsert: {
+                        jobId:        job.jobId,
+                        keyword:      kw,
+                        location:     loc,
+                        title:        job.title,
+                        company:      job.company,
+                        location_str: job.location_str,
+                        applyLink:    job.applyLink,
+                        description:  job.description,
+                        fetchedAt:    new Date(),
+                    },
+                },
+                upsert: true,
+            },
+        }));
 
-    await Job.insertMany(docs, { ordered: false }); // ordered:false = don't stop on dup errors
-    console.log(`💾 MongoDB: saved ${docs.length} jobs for "${kw}:${loc}"`);
+    if (ops.length === 0) {
+        console.warn("⚠️  MongoDB: no jobs with a valid jobId to save.");
+        return;
+    }
+
+    const result = await Job.bulkWrite(ops, { ordered: false });
+    console.log(
+        `💾 MongoDB: ${result.upsertedCount} new / ${result.matchedCount} already-stored` +
+        ` jobs for "${kw}:${loc}"`
+    );
 };
 
 /**
@@ -114,7 +159,15 @@ const getJobsCached = async (keyword, location) => {
     console.log(`❌ Cache MISS (Redis) for key "${cacheKey}" — checking MongoDB...`);
 
     // ── TIER 2: MongoDB ────────────────────────────────────────────────────
-    const dbJobs = await Job.find({ keyword: kw, location: loc }).lean();
+    // Wrapped in try/catch: a transient Atlas disconnect after startup
+    // (e.g. idle connection timeout) must not crash the request — fall
+    // through to the JSearch API instead.
+    let dbJobs = [];
+    try {
+        dbJobs = await Job.find({ keyword: kw, location: loc }).lean();
+    } catch (dbErr) {
+        console.warn("⚠️  MongoDB read failed, falling through to JSearch API:", dbErr.message);
+    }
 
     if (dbJobs.length > 0) {
         console.log(`✅ DB HIT (MongoDB): found ${dbJobs.length} jobs — caching in Redis...`);
@@ -134,19 +187,107 @@ const getJobsCached = async (keyword, location) => {
     }
 
     console.log(`❌ DB MISS (MongoDB) — fetching from JSearch API...`);
-
     // ── TIER 3: JSearch API ────────────────────────────────────────────────
-    const apiJobs = await fetchFromJSearch(keyword, location);
+    // Use a short timeout for the live fetch so slow external calls don't
+    // block the HTTP response. If the timed fetch doesn't return in time,
+    // trigger a background refresh (non-blocking) and return quickly.
+    const LOCK_KEY = `${cacheKey}:lock`;
 
+    // If another process is already fetching, avoid duplicate work.
+    try {
+        const lockSet = await redisClient.set(LOCK_KEY, "1", "NX", "EX", 30);
+        if (!lockSet) {
+            console.log(`Another fetch in progress for ${cacheKey}; returning empty result quickly.`);
+            return [];
+        }
+    } catch (e) {
+        console.warn("Redis lock failed; continuing without lock:", e.message);
+    }
+
+    const fetchPromise = fetchFromJSearch(keyword, location);
+    // Wait up to 2500ms for the external API to respond synchronously
+    const TIMEOUT_MS = 1000; // 1s synchronous wait for external API
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), TIMEOUT_MS));
+
+    let apiJobs = await Promise.race([fetchPromise, timeoutPromise]);
+
+    // If apiJobs is null, the fetch timed out — kick off background refresh
+    if (apiJobs == null) {
+        console.log(`JSearch fetch timed out after ${TIMEOUT_MS}ms for ${cacheKey}; scheduling background refresh.`);
+
+        // Background refresh — do not await
+        (async () => {
+            try {
+                const fresh = await fetchFromJSearch(keyword, location);
+                if (fresh && fresh.length > 0) {
+                    await saveToMongo(fresh, keyword, location);
+                    await saveToRedis(cacheKey, fresh);
+                }
+            } catch (err) {
+                console.error("Background JSearch refresh failed:", err.message || err);
+            } finally {
+                try { await redisClient.del(LOCK_KEY); } catch (_) {}
+            }
+        })();
+
+        // Release lock (best-effort)
+        try { await redisClient.del(LOCK_KEY); } catch (_) {}
+
+        return [];
+    }
+
+    // Fetch completed within timeout — persist and return
     if (apiJobs.length === 0) {
+        try { await redisClient.del(LOCK_KEY); } catch (_) {}
         return []; // No results found anywhere
     }
 
-    // Persist to both layers for future requests
-    await saveToMongo(apiJobs, keyword, location);
-    await saveToRedis(cacheKey, apiJobs);
+    try {
+        await saveToMongo(apiJobs, keyword, location);
+        await saveToRedis(cacheKey, apiJobs);
+    } finally {
+        try { await redisClient.del(LOCK_KEY); } catch (_) {}
+    }
 
     return apiJobs;
 };
 
-module.exports = { getJobsCached };
+/**
+ * checkCacheStatus(keyword, location)
+ * Returns an object describing whether Redis/Mongo have data and whether a
+ * background refresh is in progress (lock key).
+ */
+const checkCacheStatus = async (keyword, location) => {
+    const cacheKey = buildCacheKey(keyword, location);
+    const kw = keyword.toLowerCase().trim();
+    const loc = location.toLowerCase().trim();
+
+    let cacheHit = false;
+    let dbHit = false;
+    let refreshInProgress = false;
+
+    try {
+        const cached = await redisClient.get(cacheKey);
+        cacheHit = !!cached;
+    } catch (e) {
+        console.warn('Redis read failed while checking status:', e.message);
+    }
+
+    try {
+        const count = await Job.countDocuments({ keyword: kw, location: loc });
+        dbHit = count > 0;
+    } catch (e) {
+        console.warn('MongoDB read failed while checking status:', e.message);
+    }
+
+    try {
+        const lock = await redisClient.get(`${cacheKey}:lock`);
+        refreshInProgress = !!lock;
+    } catch (e) {
+        console.warn('Redis read failed while checking lock status:', e.message);
+    }
+
+    return { cacheKey, cacheHit, dbHit, refreshInProgress };
+};
+
+module.exports = { getJobsCached, checkCacheStatus };

@@ -13,9 +13,12 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-const upload = multer({ 
+const upload = multer({
     storage: storage,
-    fileFilter: fileFilter 
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB — prevents unbounded memory usage on large uploads
+    },
 }).single('resume');
 
 const uploadResume = (req, res) => {
@@ -39,10 +42,11 @@ const uploadResume = (req, res) => {
             const data = await pdfParse(req.file.buffer);
             
             console.log('PDF text extracted successfully.');
-            res.status(200).json({
-                success: true,
-                text: data.text
-            });
+            const resp = { success: true, text: data.text };
+            if (req.user) {
+                resp.user = { id: req.user._id, email: req.user.email };
+            }
+            res.status(200).json(resp);
         } catch (error) {
             console.error('PDF Parse Error:', error);
             res.status(500).json({ 

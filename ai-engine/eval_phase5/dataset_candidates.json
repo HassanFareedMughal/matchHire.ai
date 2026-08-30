@@ -1,0 +1,378 @@
+{
+  "resumes": [
+    {
+      "id": "R1",
+      "text": "Backend engineer with 6 years building Python REST APIs, PostgreSQL, Docker, Kubernetes, Redis, Flask, and FastAPI. Familiar with CI/CD and containerized deployments."
+    },
+    {
+      "id": "R2",
+      "text": "Senior ML engineer: model development, TensorFlow, PyTorch, scikit-learn, pandas, feature engineering, MLOps, model serving."
+    },
+    {
+      "id": "R3",
+      "text": "Frontend developer experienced with React, TypeScript, HTML, CSS, responsive design, accessibility, webpack, and Vite."
+    },
+    {
+      "id": "R4",
+      "text": "Data engineer with experience building ETL pipelines, Spark, Airflow, SQL, data warehousing, and cloud storage (AWS)."
+    },
+    {
+      "id": "R5",
+      "text": "DevOps / SRE with Kubernetes, Terraform, monitoring (Prometheus, Grafana), CI/CD, Docker image pipelines, and cloud networking."
+    },
+    {
+      "id": "R6",
+      "text": "Mobile developer with Android (Kotlin) and iOS (Swift) experience, plus React Native projects and API integration."
+    },
+    {
+      "id": "R7",
+      "text": "Data scientist with experience in statistical modelling, Python (pandas, numpy), visualization, and communicating results to stakeholders."
+    },
+    {
+      "id": "R8",
+      "text": "Full-stack engineer: Node.js, Express, React, PostgreSQL, REST APIs, Docker, and cloud deployment experience."
+    },
+    {
+      "id": "R9",
+      "text": "Cybersecurity analyst with experience in vulnerability assessment, OWASP, SIEM tools, penetration testing, and incident response."
+    },
+    {
+      "id": "R10",
+      "text": "Database administrator skilled in PostgreSQL, replication, backups, performance tuning, and query optimization."
+    },
+    {
+      "id": "R11",
+      "text": "NLP researcher with experience in transformers, Hugging Face, text embeddings, information retrieval, and model fine-tuning."
+    },
+    {
+      "id": "R12",
+      "text": "QA engineer experienced in automated testing, Selenium, Playwright, unit testing, integration testing, and test strategy."
+    },
+    {
+      "id": "R13",
+      "text": "Product manager with technical background working closely with engineering teams, defining roadmaps and specs."
+    },
+    {
+      "id": "R14",
+      "text": "Graphic designer with Adobe Photoshop, Illustrator, branding, and collaborating with marketing and product teams."
+    },
+    {
+      "id": "R15",
+      "text": "Research engineer in computer vision with OpenCV, PyTorch, model deployment, and image annotation pipeline experience."
+    }
+  ],
+  "jobs": [
+    {
+      "id": "J1",
+      "title": "Backend Engineer",
+      "description": "Design and implement RESTful APIs using Python frameworks. Work with PostgreSQL and containerised deployments. Familiarity with Docker and CI/CD."
+    },
+    {
+      "id": "J2",
+      "title": "Machine Learning Engineer",
+      "description": "Build ML pipelines and deploy models. Requires Python, TensorFlow or PyTorch, scikit-learn, and experience serving models as REST APIs."
+    },
+    {
+      "id": "J3",
+      "title": "Frontend Engineer (React)",
+      "description": "Develop responsive UI using React and TypeScript. Experience with webpack, Vite, HTML5, and CSS3 required."
+    },
+    {
+      "id": "J4",
+      "title": "Data Engineer",
+      "description": "Responsible for ETL, Spark jobs, Airflow orchestration, SQL and data warehouse design. Cloud experience (AWS/GCP) preferred."
+    },
+    {
+      "id": "J5",
+      "title": "DevOps Engineer",
+      "description": "Manage Kubernetes clusters, Terraform IaC, CI/CD pipelines, Docker images and monitoring stacks like Prometheus & Grafana."
+    },
+    {
+      "id": "J6",
+      "title": "Mobile Engineer (Android)",
+      "description": "Develop Android applications in Kotlin, integrate with backend APIs, and ship to Play Store."
+    },
+    {
+      "id": "J7",
+      "title": "Data Scientist",
+      "description": "Perform statistical analysis, build predictive models, and communicate insights. Proficiency with Python, pandas, and visualization tools."
+    },
+    {
+      "id": "J8",
+      "title": "Full Stack Engineer",
+      "description": "Work across frontend and backend: Node.js, Express, React, and relational databases. Deploy scalable web applications."
+    },
+    {
+      "id": "J9",
+      "title": "Cybersecurity Analyst",
+      "description": "Conduct vulnerability assessments, work with SIEM, and support incident response and threat hunting activities."
+    },
+    {
+      "id": "J10",
+      "title": "Database Administrator",
+      "description": "Manage PostgreSQL databases, perform tuning, backups, and high-availability setups."
+    },
+    {
+      "id": "J11",
+      "title": "NLP Researcher",
+      "description": "Research and prototype NLP models, experience with transformers, embeddings, and Hugging Face ecosystem."
+    },
+    {
+      "id": "J12",
+      "title": "QA Automation Engineer",
+      "description": "Design and implement automated test suites using Selenium, Playwright, or similar tools. Strong test engineering skills."
+    },
+    {
+      "id": "J13",
+      "title": "Product Manager (Technical)",
+      "description": "Lead product strategy, write specs, work with engineering to deliver features; technical background preferred."
+    },
+    {
+      "id": "J14",
+      "title": "Graphic Designer",
+      "description": "Create branding and marketing visuals using Adobe Photoshop and Illustrator; collaborate with product and marketing."
+    },
+    {
+      "id": "J15",
+      "title": "Computer Vision Engineer",
+      "description": "Develop CV models using OpenCV and PyTorch. Experience with image annotation and deployment of models to production."
+    }
+  ],
+  "pairs_to_label": [
+    {
+      "resume_id": "R1",
+      "job_id": "J1",
+      "label": 2
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J2",
+      "label": 1
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J4",
+      "label": 1
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J5",
+      "label": 2
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J8",
+      "label": 1
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J10",
+      "label": 1
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J2",
+      "label": 2
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J11",
+      "label": 1
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J4",
+      "label": 1
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J1",
+      "label": 1
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J8",
+      "label": 0
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J3",
+      "label": 2
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J8",
+      "label": 1
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J12",
+      "label": 0
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J14",
+      "label": 0
+    },
+    {
+      "resume_id": "R4",
+      "job_id": "J4",
+      "label": 2
+    },
+    {
+      "resume_id": "R4",
+      "job_id": "J2",
+      "label": 1
+    },
+    {
+      "resume_id": "R4",
+      "job_id": "J10",
+      "label": 1
+    },
+    {
+      "resume_id": "R4",
+      "job_id": "J8",
+      "label": 0
+    },
+    {
+      "resume_id": "R5",
+      "job_id": "J5",
+      "label": 2
+    },
+    {
+      "resume_id": "R5",
+      "job_id": "J1",
+      "label": 1
+    },
+    {
+      "resume_id": "R5",
+      "job_id": "J4",
+      "label": 1
+    },
+    {
+      "resume_id": "R6",
+      "job_id": "J6",
+      "label": 2
+    },
+    {
+      "resume_id": "R6",
+      "job_id": "J3",
+      "label": 1
+    },
+    {
+      "resume_id": "R6",
+      "job_id": "J8",
+      "label": 1
+    },
+    {
+      "resume_id": "R7",
+      "job_id": "J7",
+      "label": 2
+    },
+    {
+      "resume_id": "R7",
+      "job_id": "J2",
+      "label": 1
+    },
+    {
+      "resume_id": "R7",
+      "job_id": "J11",
+      "label": 0
+    },
+    {
+      "resume_id": "R8",
+      "job_id": "J8",
+      "label": 2
+    },
+    {
+      "resume_id": "R8",
+      "job_id": "J1",
+      "label": 1
+    },
+    {
+      "resume_id": "R8",
+      "job_id": "J3",
+      "label": 1
+    },
+    {
+      "resume_id": "R9",
+      "job_id": "J9",
+      "label": 2
+    },
+    {
+      "resume_id": "R9",
+      "job_id": "J5",
+      "label": 0
+    },
+    {
+      "resume_id": "R10",
+      "job_id": "J10",
+      "label": 2
+    },
+    {
+      "resume_id": "R10",
+      "job_id": "J4",
+      "label": 1
+    },
+    {
+      "resume_id": "R11",
+      "job_id": "J11",
+      "label": 2
+    },
+    {
+      "resume_id": "R11",
+      "job_id": "J2",
+      "label": 1
+    },
+    {
+      "resume_id": "R11",
+      "job_id": "J15",
+      "label": 0
+    },
+    {
+      "resume_id": "R12",
+      "job_id": "J12",
+      "label": 2
+    },
+    {
+      "resume_id": "R12",
+      "job_id": "J3",
+      "label": 0
+    },
+    {
+      "resume_id": "R13",
+      "job_id": "J13",
+      "label": 2
+    },
+    {
+      "resume_id": "R13",
+      "job_id": "J8",
+      "label": 0
+    },
+    {
+      "resume_id": "R14",
+      "job_id": "J14",
+      "label": 2
+    },
+    {
+      "resume_id": "R14",
+      "job_id": "J3",
+      "label": 0
+    },
+    {
+      "resume_id": "R15",
+      "job_id": "J15",
+      "label": 2
+    },
+    {
+      "resume_id": "R15",
+      "job_id": "J2",
+      "label": 1
+    },
+    {
+      "resume_id": "R15",
+      "job_id": "J4",
+      "label": 0
+    }
+  ]
+}

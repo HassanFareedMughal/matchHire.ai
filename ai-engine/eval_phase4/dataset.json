@@ -1,0 +1,70 @@
+{
+  "resumes": [
+    {
+      "id": "R1",
+      "text": "Experienced backend engineer with 5 years building REST APIs in Python. Skilled with PostgreSQL, Docker, Kubernetes, Redis, Flask and FastAPI. Familiar with CI/CD and containerised deployments. Some exposure to machine learning models for data pipelines."
+    },
+    {
+      "id": "R2",
+      "text": "Senior machine learning engineer focusing on model development and deployment. Strong with Python, scikit-learn, pandas, numpy, TensorFlow and PyTorch. Experience building ML pipelines, feature engineering, and serving models as REST APIs."
+    },
+    {
+      "id": "R3",
+      "text": "Graphic designer experienced in Adobe Photoshop and Illustrator, branding, layout, UI mockups, and marketing materials. Familiar with Figma and working with frontend teams on visual assets."
+    }
+  ],
+  "jobs": [
+    {
+      "id": "J1",
+      "title": "Backend Engineer",
+      "description": "Backend Engineer\n\nDesign and implement RESTful APIs using Python frameworks. Work with PostgreSQL and containerised deployments. Some familiarity with machine learning is a plus but not required."
+    },
+    {
+      "id": "J2",
+      "title": "Machine Learning Engineer",
+      "description": "Senior Machine Learning Engineer\n\nWe need someone to build ML pipelines and deploy models as REST APIs. Experience with Python, scikit-learn, pandas, Flask, SQL, and Docker is required."
+    },
+    {
+      "id": "J3",
+      "title": "Data Engineer",
+      "description": "Data Engineer — Build data pipelines and feature warehouses. Implement ETL jobs, optimise queries, and collaborate with ML teams to provide scalable data infrastructure. Experience with Spark, SQL, and cloud storage."
+    },
+    {
+      "id": "J4",
+      "title": "DevOps Engineer",
+      "description": "DevOps Engineer — Maintain CI/CD pipelines, manage Kubernetes clusters, Docker images, and cloud infra (AWS/GCP). Experience with Terraform, monitoring and logging best practices."
+    },
+    {
+      "id": "J5",
+      "title": "Frontend Engineer",
+      "description": "Frontend Engineer — Build responsive UI using React, TypeScript, HTML, CSS. Work closely with designers to implement pixel-perfect interfaces and collaborate with backend teams."
+    },
+    {
+      "id": "J6",
+      "title": "Graphic Designer",
+      "description": "Graphic Designer\n\nCreate visual content using Adobe Photoshop and Illustrator. Responsible for branding, layout, and marketing design projects."
+    }
+  ],
+  "pairs": [
+    {"resume_id":"R1","job_id":"J1","label":2},
+    {"resume_id":"R1","job_id":"J2","label":1},
+    {"resume_id":"R1","job_id":"J3","label":1},
+    {"resume_id":"R1","job_id":"J4","label":1},
+    {"resume_id":"R1","job_id":"J5","label":0},
+    {"resume_id":"R1","job_id":"J6","label":0},
+
+    {"resume_id":"R2","job_id":"J1","label":1},
+    {"resume_id":"R2","job_id":"J2","label":2},
+    {"resume_id":"R2","job_id":"J3","label":1},
+    {"resume_id":"R2","job_id":"J4","label":0},
+    {"resume_id":"R2","job_id":"J5","label":0},
+    {"resume_id":"R2","job_id":"J6","label":0},
+
+    {"resume_id":"R3","job_id":"J1","label":0},
+    {"resume_id":"R3","job_id":"J2","label":0},
+    {"resume_id":"R3","job_id":"J3","label":0},
+    {"resume_id":"R3","job_id":"J4","label":0},
+    {"resume_id":"R3","job_id":"J5","label":1},
+    {"resume_id":"R3","job_id":"J6","label":2}
+  ]
+}

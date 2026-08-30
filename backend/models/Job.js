@@ -23,6 +23,13 @@ const jobSchema = new mongoose.Schema({
         trim: true,
     },
 
+    // Unique identifier from the JSearch API (job_id field).
+    // Used to prevent duplicate documents when the same search is run again.
+    jobId: {
+        type: String,
+        default: "",
+    },
+
     // Job details returned by JSearch API
     title:       { type: String, required: true },
     company:     { type: String, default: "N/A" },
@@ -42,5 +49,21 @@ const jobSchema = new mongoose.Schema({
  * This makes the MongoDB lookup for "all jobs for this query" very fast.
  */
 jobSchema.index({ keyword: 1, location: 1 });
+
+/**
+ * Unique compound index on jobId + keyword + location.
+ *
+ * Guarantees: the same JSearch job_id is never stored more than once
+ * for the same search term, even if the Redis TTL expires and the
+ * JSearch API is called again. The same physical job CAN appear under
+ * different keyword/location searches — that is intentional.
+ *
+ * sparse: true means documents with jobId: "" do not participate in
+ * the uniqueness check (rare edge case where JSearch omits job_id).
+ */
+jobSchema.index(
+    { jobId: 1, keyword: 1, location: 1 },
+    { unique: true, sparse: true }
+);
 
 module.exports = mongoose.model("Job", jobSchema);

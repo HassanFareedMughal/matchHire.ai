@@ -84,13 +84,37 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from rapidfuzz import fuzz
-import spacy
-from spacy.matcher import PhraseMatcher
+try:
+    import spacy
+    from spacy.matcher import PhraseMatcher
+    SPACY_AVAILABLE = True
+except Exception:
+    spacy = None
+    PhraseMatcher = None
+    SPACY_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Load spaCy model once at module level (avoids reloading per call)
+# Attempts to auto-download the small English model if missing, and
+# falls back to a blank English pipeline if download/load fails.
 # ---------------------------------------------------------------------------
-nlp = spacy.load("en_core_web_sm")
+if SPACY_AVAILABLE:
+    try:
+        nlp = spacy.load("en_core_web_sm")
+    except Exception:
+        try:
+            from spacy.cli import download as spacy_download
+            spacy_download("en_core_web_sm")
+            nlp = spacy.load("en_core_web_sm")
+        except Exception:
+            try:
+                nlp = spacy.blank("en")
+            except Exception:
+                # If even this fails, mark spaCy unavailable at runtime
+                nlp = None
+                SPACY_AVAILABLE = False
+else:
+    nlp = None
 
 # ---------------------------------------------------------------------------
 # Curated tech-skills keyword list (used for PhraseMatcher + regex fallback)
@@ -197,7 +221,14 @@ POSITION_MULTIPLIER = 1.5
 # ---------------------------------------------------------------------------
 
 def _build_phrase_matcher():
-    """Build a spaCy PhraseMatcher preloaded with TECH_SKILLS + synonym keys."""
+    """Build a spaCy PhraseMatcher preloaded with TECH_SKILLS + synonym keys.
+
+    If spaCy is not available, return None so callers can fall back to
+    regex-based extraction.
+    """
+    if not SPACY_AVAILABLE or nlp is None:
+        return None
+
     matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
 
     # Add all canonical skill names
@@ -236,11 +267,17 @@ def preprocess(text: str) -> str:
 
 def lemmatize_text(text: str) -> str:
     """Use spaCy to lemmatize text for better TF-IDF matching."""
-    doc = nlp(text)
-    return " ".join(
-        token.lemma_.lower() for token in doc
-        if not token.is_stop and not token.is_punct and not token.is_space
-    )
+    if SPACY_AVAILABLE and nlp is not None:
+        try:
+            doc = nlp(text)
+            return " ".join(
+                token.lemma_.lower() for token in doc
+                if not token.is_stop and not token.is_punct and not token.is_space
+            )
+        except Exception:
+            pass
+    # Fallback: basic preprocessing when spaCy is unavailable
+    return preprocess(text)
 
 
 def normalize_skill(skill: str) -> str:
@@ -264,6 +301,9 @@ def _get_ner_excluded_spans(doc) -> set[tuple[int, int]]:
     known_tech.update(alias.lower() for alias in SYNONYMS.keys())
 
     excluded = set()
+    if not SPACY_AVAILABLE or doc is None:
+        return excluded
+
     for ent in doc.ents:
         if ent.label_ in NER_EXCLUDE_LABELS:
             ent_text = ent.text.lower().strip()
@@ -293,9 +333,48 @@ def extract_skills(text: str) -> list[str]:
     6. Normalise all found skills through the SYNONYMS map
     7. Return deduplicated list
     """
+    found = set()
+
+    # If spaCy or PhraseMatcher isn't available, fall back to simpler
+    # regex + synonym matching so the script can still run.
+    if not SPACY_AVAILABLE or nlp is None or phrase_matcher is None:
+        lowered_text = " " + text.lower() + " "
+
+        # Match multi-word skills first
+        multi_word_skills = sorted(
+            [s for s in TECH_SKILLS if " " in s or "/" in s],
+            key=len, reverse=True
+        )
+        for skill in multi_word_skills:
+            if normalize_skill(skill) in found:
+                continue
+            pattern = r"(?<![a-z])" + re.escape(skill) + r"(?![a-z])"
+            if re.search(pattern, lowered_text):
+                found.add(normalize_skill(skill))
+
+        # Single-token skills
+        for skill in TECH_SKILLS:
+            if " " in skill or "/" in skill:
+                continue
+            if normalize_skill(skill) in found:
+                continue
+            pattern = r"(?<![a-z])" + re.escape(skill) + r"(?![a-z])"
+            if re.search(pattern, lowered_text):
+                found.add(normalize_skill(skill))
+
+        # Synonym aliases
+        for alias, canonical in SYNONYMS.items():
+            if canonical in found:
+                continue
+            pattern = r"(?<![a-z])" + re.escape(alias) + r"(?![a-z])"
+            if re.search(pattern, lowered_text):
+                found.add(canonical)
+
+        return list(found)
+
+    # ── Full spaCy pipeline when available ──
     doc = nlp(text.lower())
     excluded_spans = _get_ner_excluded_spans(doc)
-    found = set()
 
     # ── Step 1: PhraseMatcher (linguistically-aware dictionary matching) ──
     matches = phrase_matcher(doc)
@@ -312,11 +391,9 @@ def extract_skills(text: str) -> list[str]:
         found.add(normalize_skill(match_text))
 
     # ── Step 2: Lemma-based matching ──
-    # Check if lemmatized tokens match any skill in our dictionary
     for token in doc:
         lemma = token.lemma_.lower()
         if lemma in TECH_SKILLS:
-            # Verify it's not inside an excluded NER span
             if not _span_overlaps_excluded(token.idx, token.idx + len(token.text), excluded_spans):
                 found.add(normalize_skill(lemma))
 
@@ -328,7 +405,7 @@ def extract_skills(text: str) -> list[str]:
     )
     for skill in multi_word_skills:
         if normalize_skill(skill) in found:
-            continue  # already matched
+            continue
         pattern = r"(?<![a-z])" + re.escape(skill) + r"(?![a-z])"
         if re.search(pattern, lowered_text):
             found.add(normalize_skill(skill))
@@ -336,7 +413,7 @@ def extract_skills(text: str) -> list[str]:
     # ── Step 4: Synonym alias fallback ──
     for alias, canonical in SYNONYMS.items():
         if canonical in found:
-            continue  # already have the canonical form
+            continue
         pattern = r"(?<![a-z])" + re.escape(alias) + r"(?![a-z])"
         if re.search(pattern, lowered_text):
             found.add(canonical)
@@ -448,6 +525,43 @@ def compute_extra_skills_bonus(resume: str, jd_skills: list[str]) -> tuple[float
 # Main matcher function
 # ---------------------------------------------------------------------------
 
+def _compute_semantic_scores(resume: str, job_descriptions: list) -> dict:
+    """
+    Compute Sentence-BERT semantic similarity for each job using a single
+    batch encode pass per request. This is intentionally lazy: if the model
+    is not available or fails to load, the baseline TF-IDF match still works
+    and the semantic values simply remain null with an explanatory error.
+    """
+    if not job_descriptions:
+        return {}
+
+    try:
+        from semantic_matcher import get_matcher
+        matcher = get_matcher()
+        jd_texts = [str(job.get("description", "") or "") for job in job_descriptions]
+        batch_results = matcher.score_batch(resume, jd_texts)
+
+        semantic_by_idx = {}
+        for i, job in enumerate(job_descriptions):
+            jd_idx = job.get("_idx", i)
+            result = batch_results[i] if i < len(batch_results) else {"score": 0.0, "error": "missing result"}
+            semantic_by_idx[jd_idx] = {
+                "semantic_similarity": None if result.get("error") else result.get("score"),
+                "semantic_error": result.get("error"),
+                "semantic_inference_ms": result.get("inference_ms"),
+            }
+        return semantic_by_idx
+    except Exception as exc:
+        semantic_by_idx = {}
+        for i, job in enumerate(job_descriptions):
+            jd_idx = job.get("_idx", i)
+            semantic_by_idx[jd_idx] = {
+                "semantic_similarity": None,
+                "semantic_error": str(exc),
+            }
+        return semantic_by_idx
+
+
 def match_jobs(resume: str, job_descriptions: list, top_n: int = 5) -> list:
     """
     Return top N jobs ranked by the hybrid score.
@@ -457,15 +571,20 @@ def match_jobs(resume: str, job_descriptions: list, top_n: int = 5) -> list:
         tfidf_semantic  20%
         position_bonus  15%
         extra_skills    10%
+
+    Sentence-BERT semantic similarity is calculated separately and added to each
+    job result without altering the baseline final hybrid score.
     """
     if not job_descriptions:
         return []
 
+    semantic_scores = _compute_semantic_scores(resume, job_descriptions)
     results = []
 
-    for job in job_descriptions:
+    for i, job in enumerate(job_descriptions):
         jd_text  = job.get("description", "")
         jd_title = job.get("title", "Unknown")
+        jd_idx   = job.get("_idx", i)
 
         # Extract skills from JD using NER-enhanced pipeline
         jd_skills = extract_skills(jd_text)
@@ -484,10 +603,49 @@ def match_jobs(resume: str, job_descriptions: list, top_n: int = 5) -> list:
             0.10 * extra_score
         )
 
-        results.append({
+        semantic_info = semantic_scores.get(jd_idx, {
+            "semantic_similarity": None,
+            "semantic_error": "semantic matching unavailable",
+        })
+
+        # --- Compute improved hybrid score (FYP-II Phase 3)
+        # We combine the Sentence-BERT semantic similarity and the explicit
+        # skill recall using the harmonic mean (analogous to F1). This is a
+        # principled, parameter-free aggregator that rewards jobs where both
+        # semantic similarity and skill overlap are high while remaining
+        # conservative when one signal is missing.
+        #
+        # semantic_used: prefer Sentence-BERT when available, else fall back
+        # to the TF-IDF baseline for semantic signal.
+        semantic_used = semantic_info.get("semantic_similarity")
+        if semantic_used is None:
+            semantic_used = tfidf_score
+
+        # Ensure numeric bounds [0,1]
+        try:
+            semantic_used = float(semantic_used) if semantic_used is not None else 0.0
+        except Exception:
+            semantic_used = 0.0
+
+        # skill_recall is already in [0,1]
+        skill_recall = float(recall_score) if recall_score is not None else 0.0
+
+        # Harmonic mean: H = 2 * (sem * skill) / (sem + skill)  (0 if both zero)
+        if semantic_used <= 0 or skill_recall <= 0:
+            improved_raw = 0.0
+        else:
+            improved_raw = 2.0 * (semantic_used * skill_recall) / (semantic_used + skill_recall)
+
+        # Scale to 0-100 for frontend display and ensure bounds
+        improved_score_pct = max(0.0, min(100.0, round(improved_raw * 100.0, 2)))
+
+        result = {
+            "_idx":        jd_idx,
             "title":       jd_title,
             "description": jd_text,
             "score":       round(final, 4),
+            "semantic_similarity": semantic_info.get("semantic_similarity"),
+            "semantic_error": semantic_info.get("semantic_error"),
             "score_breakdown": {
                 "skill_recall":      round(recall_score, 4),
                 "tfidf_semantic":    round(tfidf_score,  4),
@@ -496,8 +654,22 @@ def match_jobs(resume: str, job_descriptions: list, top_n: int = 5) -> list:
                 "matched_skills":    matched,
                 "missing_skills":    missing,
                 "extra_skills_list": extra_list,
+                "semantic_similarity": semantic_info.get("semantic_similarity"),
+                "semantic_error":     semantic_info.get("semantic_error"),
             },
-        })
+            # Preserve the existing FYP-I composite `score` as the baseline.
+            # Additionally expose the improved FYP-II score and its components
+            # without overwriting the original fields.
+            "baseline_score": round(final, 4),
+            "improved_score": improved_score_pct,
+            "improved_score_components": {
+                "semantic_used": round(semantic_used, 4),
+                "skill_recall": round(skill_recall, 4),
+                "improved_raw": round(improved_raw, 4),
+            },
+        }
+
+        results.append(result)
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_n]

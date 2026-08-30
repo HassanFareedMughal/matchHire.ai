@@ -1,0 +1,237 @@
+{
+  "summary": {
+    "dataset_size": 18,
+    "num_resumes": 3,
+    "num_jobs": 6,
+    "num_positive_examples": 9,
+    "num_negative_examples": 9,
+    "baseline": {
+      "tp": 4,
+      "tn": 9,
+      "fp": 0,
+      "fn": 5,
+      "precision": 1.0,
+      "recall": 0.4444444444444444,
+      "f1": 0.6153846153846153,
+      "precision_at_k": {
+        "1": 1.0,
+        "3": 0.8888888888888888
+      },
+      "threshold": 0.5
+    },
+    "improved": {
+      "tp": 5,
+      "tn": 9,
+      "fp": 0,
+      "fn": 4,
+      "precision": 1.0,
+      "recall": 0.5555555555555556,
+      "f1": 0.7142857142857143,
+      "precision_at_k": {
+        "1": 0.6666666666666666,
+        "3": 0.6666666666666666
+      },
+      "threshold": 50.0
+    }
+  },
+  "records": [
+    {
+      "resume_id": "R1",
+      "job_id": "J1",
+      "label": 2,
+      "label_binary": 1,
+      "baseline_score": 0.7804,
+      "baseline_pred": 1,
+      "improved_score": 94.45,
+      "improved_pred": 1,
+      "semantic_used": 0.8949
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J2",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.6247,
+      "baseline_pred": 1,
+      "improved_score": 77.92,
+      "improved_pred": 1,
+      "semantic_used": 0.8108
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J3",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.4873,
+      "baseline_pred": 0,
+      "improved_score": 62.46,
+      "improved_pred": 1,
+      "semantic_used": 0.5876
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J4",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.3655,
+      "baseline_pred": 0,
+      "improved_score": 45.54,
+      "improved_pred": 0,
+      "semantic_used": 0.4859
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J5",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.1147,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.3561
+    },
+    {
+      "resume_id": "R1",
+      "job_id": "J6",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.1,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.1837
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J1",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.5889,
+      "baseline_pred": 1,
+      "improved_score": 70.09,
+      "improved_pred": 1,
+      "semantic_used": 0.6579
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J2",
+      "label": 2,
+      "label_binary": 1,
+      "baseline_score": 0.544,
+      "baseline_pred": 1,
+      "improved_score": 72.75,
+      "improved_pred": 1,
+      "semantic_used": 0.8702
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J3",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.4594,
+      "baseline_pred": 0,
+      "improved_score": 41.42,
+      "improved_pred": 0,
+      "semantic_used": 0.5468
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J4",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.1134,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.4101
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J5",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.1092,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.2961
+    },
+    {
+      "resume_id": "R2",
+      "job_id": "J6",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.1,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.2502
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J1",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.0558,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.346
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J2",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.0302,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.3169
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J3",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.0764,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.3646
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J4",
+      "label": 0,
+      "label_binary": 0,
+      "baseline_score": 0.0338,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.2732
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J5",
+      "label": 1,
+      "label_binary": 1,
+      "baseline_score": 0.0806,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.471
+    },
+    {
+      "resume_id": "R3",
+      "job_id": "J6",
+      "label": 2,
+      "label_binary": 1,
+      "baseline_score": 0.1773,
+      "baseline_pred": 0,
+      "improved_score": 0.0,
+      "improved_pred": 0,
+      "semantic_used": 0.7621
+    }
+  ]
+}

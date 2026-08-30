@@ -1,5 +1,6 @@
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 
 /**
  * POST /api/match
@@ -28,8 +29,19 @@ const getMatchedJobs = (req, res) => {
     // Absolute path to the Python script
     const scriptPath = path.join(__dirname, "../../ai-engine/matcher.py");
 
+    // Prefer the project's AI venv Python when available (same logic
+    // used elsewhere in the backend) to avoid relying on a global Python.
+    const venvPythonExecutable =
+        process.platform === "win32"
+            ? path.resolve(__dirname, "../../ai-engine/.venv/Scripts/python.exe")
+            : path.resolve(__dirname, "../../ai-engine/.venv/bin/python");
+
+    const pythonExecutable = fs.existsSync(venvPythonExecutable)
+        ? venvPythonExecutable
+        : (process.env.PYTHON_PATH || (process.platform === "win32" ? "py" : "python3"));
+
     // Spawn the Python process
-    const python = spawn("python", [scriptPath]);
+    const python = spawn(pythonExecutable, [scriptPath]);
 
     let outputData = "";  // collects stdout from Python
     let errorData  = "";  // collects stderr from Python (for debugging)
