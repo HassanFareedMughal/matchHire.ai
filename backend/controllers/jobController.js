@@ -103,6 +103,7 @@ const smartMatch = async (req, res) => {
     // multiple jobs share the same title (e.g. two "Software Engineer" listings).
     const jobsForPython = jobs.map((job, index) => ({
         _idx: index,
+        jobId: job.jobId,
         title: job.title,
         description: job.description || "",
         applyLink: job.applyLink,
@@ -174,6 +175,7 @@ const smartMatch = async (req, res) => {
         const semanticError = match.semantic_error ?? null;
 
         return {
+            jobId: original.jobId || original.applyLink || `${original.title}|${original.company}|${original.location}`,
             title: match.title,
             company: original.company || "N/A",
             location: original.location || "N/A",

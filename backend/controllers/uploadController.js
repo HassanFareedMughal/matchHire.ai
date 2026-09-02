@@ -44,7 +44,12 @@ const uploadResume = (req, res) => {
             console.log('PDF text extracted successfully.');
             const resp = { success: true, text: data.text };
             if (req.user) {
+                req.user.resumeText = data.text;
+                req.user.resumeFileName = req.file.originalname;
+                req.user.resumeUpdatedAt = new Date();
+                await req.user.save();
                 resp.user = { id: req.user._id, email: req.user.email };
+                resp.resume = { fileName: req.user.resumeFileName, updatedAt: req.user.resumeUpdatedAt };
             }
             res.status(200).json(resp);
         } catch (error) {
