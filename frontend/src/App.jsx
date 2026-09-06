@@ -5,7 +5,9 @@ import {
   ArrowUpRight,
   BriefcaseBusiness,
   Check,
+  Clipboard,
   ChevronRight,
+  Download,
   FileText,
   Heart,
   Info,
@@ -16,6 +18,7 @@ import {
   Menu,
   Moon,
   Search,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -904,7 +907,7 @@ export default function App() {
             />
           )}
           {page === "documents" && (
-            <ResumeDocuments setPage={setPage} />
+            <CoverLetterDocuments setPage={setPage} setAuthMode={setAuthMode} results={sorted} />
           )}
           {page === "settings" && (
             <SettingsPage
@@ -1277,6 +1280,77 @@ function SettingsPage({ user, setUser, theme, setTheme, logout }) {
     </>
   );
 }
+function CoverLetterDocuments({ setPage, setAuthMode, results }) {
+  const [resume, setResume] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [tab, setTab] = useState("resume");
+  const [favorites, setFavorites] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [letter, setLetter] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState(null);
+
+  const loadResume = () => {
+    setLoading(true);
+    setError(null);
+    axios.get(`${API}/resume`).then((response) => setResume(response.data.resume))
+      .catch((requestError) => setError(requestError.response?.data?.message || "Failed to load resume."))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    loadResume();
+    axios.get(`${API}/favorites`).then((response) => setFavorites(response.data.favorites || [])).catch(() => {});
+  }, []);
+
+  const jobs = [...new Map([...results, ...favorites].filter((job) => job?.jobId && job.title).map((job) => [String(job.jobId), job])).values()];
+  const selectedJob = jobs.find((job) => String(job.jobId) === selectedJobId);
+  const generate = async () => {
+    if (!selectedJob || !resume?.text) return;
+    setGenerating(true);
+    setGenerationError(null);
+    try {
+      const response = await axios.post(`${API}/cover-letter/generate`, { job: selectedJob });
+      setLetter(response.data.coverLetter || "");
+    } catch (requestError) {
+      setGenerationError(requestError.response?.data?.message || "Cover letter generation failed. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+  const copyLetter = async () => { if (letter) await navigator.clipboard.writeText(letter); };
+  const downloadLetter = () => {
+    if (!letter) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([letter], { type: "text/plain;charset=utf-8" }));
+    link.download = "matchhire-cover-letter.txt";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  return (
+    <>
+      <div className="page-heading"><div><p className="eyebrow">Your documents</p><h1>Resume & cover letter</h1><p>Keep your resume ready for matching and future applications.</p></div></div>
+      <div className="document-tabs">
+        <button className={tab === "resume" ? "selected" : ""} onClick={() => setTab("resume")}><FileText size={16} />Resume</button>
+        <button className={tab === "cover" ? "selected" : ""} onClick={() => setTab("cover")}><Sparkles size={16} />Cover letter</button>
+      </div>
+      {tab === "resume" ? <section className="panel resume-panel">
+        {loading ? <div className="document-loading"><span className="loader"><FileText size={18} /></span><p>Loading your resume...</p></div> : error ? <div className="document-empty"><span className="empty-icon"><Info size={21} /></span><h2>Resume unavailable</h2><p>{error}</p>{error.includes("Authorization") || error.includes("token") ? <Button variant="secondary" onClick={() => setAuthMode("login")}>Sign in</Button> : <Button variant="secondary" onClick={loadResume}>Try again</Button>}</div> : resume?.text ? <><div className="document-meta"><div><p className="eyebrow">Uploaded resume</p><h2>{resume.fileName || "Resume PDF"}</h2><p>{resume.updatedAt ? `Updated ${new Date(resume.updatedAt).toLocaleString()}` : "Extracted content saved to your account"}</p></div><Button variant="secondary" icon={Search} onClick={() => setPage("find")}>Use for matching</Button></div><textarea className="resume-preview" value={resume.text} readOnly aria-label="Extracted resume content" /></> : <div className="document-empty"><span className="empty-icon"><Upload size={21} /></span><h2>No resume uploaded yet</h2><p>Upload a PDF from Find Jobs to see its extracted content here.</p><Button icon={Search} onClick={() => setPage("find")}>Go to Find Jobs</Button></div>}
+      </section> : <section className="panel cover-letter-panel">
+        <div className="section-head"><div><p className="eyebrow">AI-assisted, resume-grounded</p><h2>Write for the opportunity in front of you.</h2><p>Select one of your real matched or saved jobs. Gemini uses your persisted resume and the selected job details to draft an editable letter.</p></div><Sparkles className="muted-icon" size={22} /></div>
+        {!resume?.text && !loading ? <div className="document-empty compact-empty"><span className="empty-icon"><Upload size={21} /></span><h2>Upload a resume first</h2><p>A persisted resume is required before a grounded cover letter can be generated.</p><Button icon={Search} onClick={() => setPage("find")}>Go to Find Jobs</Button></div> : <>
+          <label>Selected job<select value={selectedJobId} onChange={(event) => { setSelectedJobId(event.target.value); setGenerationError(null); }}><option value="">Choose a matched or saved job</option>{jobs.map((job) => <option key={job.jobId} value={job.jobId}>{job.title} · {job.company || "Company not listed"}</option>)}</select></label>
+          {selectedJob && <div className="selected-job"><strong>{selectedJob.title}</strong><span>{selectedJob.company || "Company not listed"} · {selectedJob.location || "Location not listed"}</span></div>}
+          {generationError && <div className="alert error"><Info size={16} />{generationError}</div>}
+          <div className="cover-actions"><Button icon={generating ? RefreshCw : Sparkles} disabled={!selectedJob || !resume?.text || generating} onClick={generate}>{generating ? "Generating..." : letter ? "Regenerate" : "Generate cover letter"}</Button>{letter && <><Button variant="secondary" icon={Clipboard} onClick={copyLetter}>Copy</Button><Button variant="secondary" icon={Download} onClick={downloadLetter}>Download .txt</Button></>}</div>
+          {generating ? <div className="document-loading cover-loading"><span className="loader"><Sparkles size={18} /></span><p>Gemini is tailoring your letter to this job...</p></div> : letter ? <textarea className="cover-editor" value={letter} onChange={(event) => setLetter(event.target.value)} aria-label="Editable generated cover letter" /> : <div className="cover-empty"><FileText size={20} /><span>Your generated letter will appear here for review and editing.</span></div>}
+        </>}
+      </section>}
+    </>
+  );
+}
+
 function ResumeDocuments({ setPage }) {
   const [resume, setResume] = useState(null);
   const [loading, setLoading] = useState(true);

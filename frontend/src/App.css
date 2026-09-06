@@ -35,6 +35,16 @@
 .document-empty h2 { margin:16px 0 8px; font-size:19px; }
 .document-empty p { max-width:480px; margin-bottom:20px; }
 .document-loading { display:grid; justify-items:center; min-height:260px; align-content:center; text-align:center; }
+.cover-letter-panel { max-width:820px; }
+.cover-letter-panel .section-head { margin-bottom:20px; }
+.cover-letter-panel .section-head p:not(.eyebrow) { max-width:650px; }
+.selected-job { display:grid; gap:4px; padding:13px 14px; margin:14px 0 17px; color:var(--text); background:var(--accent-soft); border:1px solid var(--border); border-radius:8px; font-size:12px; }
+.selected-job span { color:var(--muted); font-size:11px; }
+.cover-actions { display:flex; flex-wrap:wrap; gap:9px; margin:17px 0; }
+.cover-editor { min-height:390px; font-size:13px; background:var(--surface-2); }
+.cover-empty { display:flex; align-items:center; justify-content:center; gap:8px; min-height:230px; padding:25px; color:var(--muted); border:1px dashed var(--border); border-radius:8px; font-size:12px; text-align:center; }
+.cover-loading { min-height:230px; padding:15px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; }
+.compact-empty { min-height:260px; }
 .favorite-list .job-card:has(.save-button[aria-label="Save job"]) { display:none; }
 .tour-backdrop, .tour-layer { position:fixed; z-index:30; inset:0; }
 .tour-backdrop { display:grid; place-items:center; padding:20px; background:rgba(9,21,25,.58); backdrop-filter:blur(3px); }

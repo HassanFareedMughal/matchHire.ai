@@ -179,6 +179,7 @@ const smartMatch = async (req, res) => {
             title: match.title,
             company: original.company || "N/A",
             location: original.location || "N/A",
+            description: original.description || "",
             applyLink: original.applyLink || "N/A",
             // Preserve existing baseline score (FYP-I)
             score: match.score,

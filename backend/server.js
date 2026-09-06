@@ -11,6 +11,7 @@ const authRouter = require("./routes/auth");
 const favoritesRouter = require("./routes/favorites");
 const profileRouter = require("./routes/profile");
 const resumeRouter = require("./routes/resume");
+const coverLetterRouter = require("./routes/coverLetter");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/resume', resumeRouter);
+app.use('/api/cover-letter', coverLetterRouter);
 
 app.get("/", (req, res) => {
     res.send("matchHire.ai backend running 🚀");
